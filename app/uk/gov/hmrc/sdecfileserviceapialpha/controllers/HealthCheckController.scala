@@ -16,20 +16,16 @@
 
 package uk.gov.hmrc.sdecfileserviceapialpha.controllers
 
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
-import play.api.http.Status
-import play.api.test.Helpers.*
-import play.api.test.{FakeRequest, Helpers}
+import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
-class MicroserviceHelloWorldControllerSpec extends AnyWordSpec with Matchers:
+import javax.inject.{Inject, Singleton}
 
-    private val fakeRequest = FakeRequest("GET", "/")
-    private val controller  = new HealthCheckController(
-      Helpers.stubControllerComponents()
-    )
+@Singleton()
+class HealthCheckController @Inject()(
+    cc: ControllerComponents
+) extends BackendController(cc):
 
-    "GET /" should:
-        "return 200" in:
-            val result = controller.hello()(fakeRequest)
-            status(result) shouldBe Status.OK
+    val healthCheckResponse: Action[AnyContent] =
+      Action:
+          implicit request => Ok("Up and running! :)")
