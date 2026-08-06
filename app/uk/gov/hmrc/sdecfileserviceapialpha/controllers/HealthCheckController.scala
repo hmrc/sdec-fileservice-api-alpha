@@ -22,7 +22,7 @@ import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import javax.inject.{Inject, Singleton}
 
 @Singleton()
-class HealthCheckController @Inject()(
+class HealthCheckController @Inject() (
     cc: ControllerComponents
 ) extends BackendController(cc):
 
