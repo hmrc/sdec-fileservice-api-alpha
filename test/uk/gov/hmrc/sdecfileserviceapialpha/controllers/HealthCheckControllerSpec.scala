@@ -24,12 +24,12 @@ import play.api.test.{FakeRequest, Helpers}
 
 class HealthCheckControllerSpec extends AnyWordSpec with Matchers:
 
-    private val fakeRequest = FakeRequest("GET", "/")
-    private val controller  = new HealthCheckController(
-      Helpers.stubControllerComponents()
-    )
+  private val fakeRequest = FakeRequest("GET", "/")
+  private val controller  = new HealthCheckController(
+    Helpers.stubControllerComponents()
+  )
 
-    "GET /" should:
-        "return 200" in:
-            val result = controller.healthCheckResponse()(fakeRequest)
-            status(result) shouldBe Status.OK
+  "GET /" should:
+    "return 200" in:
+      val result = controller.healthCheckResponse()(fakeRequest)
+      status(result) shouldBe Status.OK

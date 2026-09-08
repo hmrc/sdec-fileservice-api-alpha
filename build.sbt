@@ -16,17 +16,15 @@ lazy val microservice = Project(appName, file("."))
   .disablePlugins(JUnitXmlReportPlugin)
   .settings(
     Compile / scalafmtOnCompile := true,
-    Test / scalafmtOnCompile    := true,
-    PlayKeys.playDefaultPort    := 4503,
+    Test / scalafmtOnCompile := true,
+    PlayKeys.playDefaultPort := 4503,
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
     Compile / unmanagedResourceDirectories += baseDirectory.value / "resources",
     compilerSettings
   )
   .settings(
     Compile / unmanagedResourceDirectories += baseDirectory.value / "resources",
-    Test / unmanagedSourceDirectories := (Test / baseDirectory)(base =>
-      Seq(base / "test", base / "test-common")
-    ).value,
+    Test / unmanagedSourceDirectories := (Test / baseDirectory)(base => Seq(base / "test", base / "test-common")).value,
     Test / unmanagedResourceDirectories := Seq(
       baseDirectory.value / "test-resources"
     )
