@@ -23,9 +23,9 @@ import javax.inject.{Inject, Singleton}
 
 @Singleton()
 class HealthCheckController @Inject() (
-    cc: ControllerComponents
+  cc: ControllerComponents
 ) extends BackendController(cc):
 
-    val healthCheckResponse: Action[AnyContent] =
-      Action:
-          implicit request => Ok("Up and running! :)")
+  val healthCheckResponse: Action[AnyContent] =
+    Action:
+      implicit request => Ok("Up and running! :)")
