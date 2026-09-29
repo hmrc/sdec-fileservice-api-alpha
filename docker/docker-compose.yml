@@ -1,0 +1,27 @@
+services:
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs
+    command: >
+      mini
+      -dir=/data
+      -ip=seaweedfs
+      -ip.bind=0.0.0.0
+      -s3
+    ports:
+      # S3 API
+      - "8333:8333"
+      # SeaweedFS filer
+      - "8888:8888"
+      # Master
+      - "9333:9333"
+      # Volume server
+      - "8080:8080"
+    volumes:
+      - ./seaweedfs-data:/data
+    environment:
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: secret
+      S3_BUCKET: sdec-files
+
+    restart: unless-stopped

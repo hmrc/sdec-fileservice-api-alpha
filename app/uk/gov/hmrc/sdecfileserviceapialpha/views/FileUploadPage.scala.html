@@ -1,0 +1,83 @@
+@*
+ * Copyright 2026 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *@
+
+@import play.api.mvc.RequestHeader
+@import uk.gov.hmrc.sdecfileserviceapialpha.models.S3PostData
+
+@this(
+        layout: uk.gov.hmrc.sdecfileserviceapialpha.views.html.templates.Layout
+)
+
+@(postData: S3PostData)(
+        implicit request: RequestHeader,
+        messages: Messages
+)
+
+@layout("Upload a file") {
+
+    <h1 class="govuk-heading-xl">
+        Upload a file
+    </h1>
+
+    <p class="govuk-body-l">
+        Upload a document to Secure Document Exchange.
+    </p>
+
+    <form
+    action="@postData.url"
+    method="POST"
+    enctype="multipart/form-data">
+
+        @for((name, value) <- postData.fields) {
+            <input
+            type="hidden"
+            name="@name"
+            value="@value">
+        }
+
+        <div class="govuk-form-group">
+
+            <label
+            class="govuk-label govuk-label--m"
+            for="file">
+                Choose a file
+            </label>
+
+            <div
+            id="file-hint"
+            class="govuk-hint">
+                Select the document you want to upload.
+            </div>
+
+            <input
+            class="govuk-file-upload"
+            id="file"
+            name="file"
+            type="file"
+            aria-describedby="file-hint"
+            required>
+
+        </div>
+
+        <button
+        class="govuk-button"
+        type="submit"
+        data-module="govuk-button">
+            Upload file
+        </button>
+
+    </form>
+}

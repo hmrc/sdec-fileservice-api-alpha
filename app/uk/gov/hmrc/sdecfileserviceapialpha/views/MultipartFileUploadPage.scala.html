@@ -1,0 +1,368 @@
+@*
+ * Copyright 2026 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *@
+
+@import play.api.mvc.RequestHeader
+@import uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.routes
+
+@this(
+    layout: uk.gov.hmrc.sdecfileserviceapialpha.views.html.templates.Layout
+)
+
+@(
+    implicit request: RequestHeader,
+    messages: Messages
+)
+
+@layout("Upload a file using multipart upload") {
+
+    <h1 class="govuk-heading-xl">
+        Upload a file using multipart upload
+    </h1>
+
+    <p class="govuk-body-l">
+        Select a file to upload directly to S3 using multipart upload.
+    </p>
+
+    <p class="govuk-body">
+        The file will be split into parts in your browser.
+        Each part will be uploaded directly to S3.
+    </p>
+
+    <div class="govuk-form-group">
+
+        <label
+            class="govuk-label govuk-label--m"
+            for="file">
+            Choose a file
+        </label>
+
+        <div
+            id="file-hint"
+            class="govuk-hint">
+            Select the document you want to upload.
+        </div>
+
+        <input
+            class="govuk-file-upload"
+            id="file"
+            name="file"
+            type="file"
+            aria-describedby="file-hint"
+            required>
+
+    </div>
+
+    <button
+        class="govuk-button"
+        id="upload-button"
+        type="button"
+        data-module="govuk-button">
+        Upload file
+    </button>
+
+    <div
+        id="upload-status"
+        class="govuk-body"
+        aria-live="polite">
+    </div>
+
+    <div
+        id="progress-container"
+        class="govuk-!-margin-top-4"
+        hidden>
+
+        <p class="govuk-body">
+            Upload progress:
+            <span id="progress-text">0%</span>
+        </p>
+
+        <progress
+            id="upload-progress"
+            max="100"
+            value="0"
+            style="width: 100%;">
+        </progress>
+
+    </div>
+
+
+
+    <script>
+        (() => {
+
+            const fileInput =
+                document.getElementById("file");
+
+            const uploadButton =
+                document.getElementById("upload-button");
+
+            const status =
+                document.getElementById("upload-status");
+
+            const progressContainer =
+                document.getElementById("progress-container");
+
+            const progress =
+                document.getElementById("upload-progress");
+
+            const progressText =
+                document.getElementById("progress-text");
+
+            const csrfToken =
+                document.querySelector(
+                    'input[name="csrfToken"]'
+                )?.value;
+
+            uploadButton.addEventListener(
+                "click",
+                async () => {
+
+                    const file = fileInput.files[0];
+
+                    if (!file) {
+
+                        status.innerHTML =
+                            '<p class="govuk-error-message">' +
+                            'Select a file to upload.' +
+                            '</p>';
+
+                        return;
+                    }
+
+                    uploadButton.disabled = true;
+
+                    progressContainer.hidden = false;
+
+                    status.textContent =
+                        "Starting multipart upload...";
+
+                    try {
+
+                        /*
+                         * STEP 1
+                         *
+                         * Ask Play to create the S3
+                         * multipart upload and generate
+                         * presigned URLs.
+                         */
+
+                        const initiateResponse =
+                            await fetch(
+                                "@routes.MultipartFileUploader.initiateMultipartUpload",
+                                {
+                                    method: "POST",
+
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json",
+
+                                        ...(csrfToken
+                                            ? {
+                                                "Csrf-Token":
+                                                    csrfToken
+                                            }
+                                            : {})
+                                    },
+
+                                    body: JSON.stringify({
+                                        filename:
+                                            file.name,
+
+                                        contentType:
+                                            file.type ||
+                                            "application/octet-stream",
+
+                                        fileSize:
+                                            file.size
+                                    })
+                                }
+                            );
+
+                        if (!initiateResponse.ok) {
+
+                            throw new Error(
+                                "Unable to initiate multipart upload"
+                            );
+                        }
+
+                        const upload =
+                            await initiateResponse.json();
+
+                        status.textContent =
+                            "Uploading file parts...";
+
+                        /*
+                         * STEP 2
+                         *
+                         * Upload each part directly
+                         * from the browser to S3.
+                         */
+
+                        const parts = [];
+
+                        let bytesUploaded = 0;
+
+                        for (const part of upload.urls) {
+
+                            const start =
+                                (part.partNumber - 1) *
+                                upload.partSize;
+
+                            const end =
+                                Math.min(
+                                    start + upload.partSize,
+                                    file.size
+                                );
+
+                            const chunk =
+                                file.slice(start, end);
+
+                            const response =
+                                await fetch(
+                                    part.url,
+                                    {
+                                        method: "PUT",
+                                        body: chunk
+                                    }
+                                );
+
+                            if (!response.ok) {
+
+                                throw new Error(
+                                    "Part " +
+                                    part.partNumber +
+                                    " failed with HTTP " +
+                                    response.status
+                                );
+                            }
+
+                            const etag =
+                                response.headers.get("ETag");
+
+                            if (!etag) {
+
+                                throw new Error(
+                                    "S3 did not return an ETag for part " +
+                                    part.partNumber
+                                );
+                            }
+
+                            parts.push({
+                                partNumber:
+                                    part.partNumber,
+
+                                etag:
+                                    etag
+                            });
+
+                            bytesUploaded += chunk.size;
+
+                            const percentage =
+                                Math.round(
+                                    bytesUploaded /
+                                    file.size *
+                                    100
+                                );
+
+                            progress.value =
+                                percentage;
+
+                            progressText.textContent =
+                                percentage + "%";
+
+                            status.textContent =
+                                "Uploaded part " +
+                                part.partNumber +
+                                " of " +
+                                upload.urls.length;
+                        }
+
+                        /*
+                         * STEP 3
+                         *
+                         * Tell Play to complete the
+                         * S3 multipart upload.
+                         */
+
+                        status.textContent =
+                            "Completing multipart upload...";
+
+                        const completeResponse =
+                            await fetch(
+                                "/sdec-fileservice-api/multipart-upload/complete",
+                                {
+                                    method: "POST",
+
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json",
+
+                                        ...(csrfToken
+                                            ? {
+                                                "Csrf-Token":
+                                                    csrfToken
+                                            }
+                                            : {})
+                                    },
+
+                                    body: JSON.stringify({
+                                        key:
+                                            upload.key,
+
+                                        uploadId:
+                                            upload.uploadId,
+
+                                        parts:
+                                            parts
+                                    })
+                                }
+                            );
+
+                        if (!completeResponse.ok) {
+
+                            throw new Error(
+                                "Unable to complete multipart upload"
+                            );
+                        }
+
+                        /*
+                         * STEP 4
+                         *
+                         * Multipart upload has completed.
+                         */
+
+                        window.location.href =
+                            "/sdec-fileservice-api/multipart-upload/complete?filename=" +
+                            encodeURIComponent(file.name);
+
+                    } catch (error) {
+
+                        console.error(error);
+
+                        status.innerHTML =
+                            '<p class="govuk-error-message">' +
+                            'The file upload failed: ' +
+                            error.message +
+                            '</p>';
+
+                        uploadButton.disabled = false;
+                    }
+                }
+            );
+
+        })();
+    </script>
+}

@@ -14,16 +14,9 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.sdecfileserviceapialpha.config
+package uk.gov.hmrc.sdecfileserviceapialpha.models
 
-import play.api.Configuration
-
-import javax.inject.{Inject, Singleton}
-
-@Singleton
-class AppConfig @Inject() (config: Configuration):
-
-  val appName: String = config.get[String]("appName")
-
-  val timeout:   Int = config.get[Int]("timeout-dialog.timeout")
-  val countdown: Int = config.get[Int]("timeout-dialog.countdown")
+case class S3PostData(
+  url:    String,
+  fields: Map[String, String]
+)
