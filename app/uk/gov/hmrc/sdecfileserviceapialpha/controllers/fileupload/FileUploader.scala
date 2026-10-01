@@ -17,31 +17,29 @@
 package uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload
 
 import play.api.i18n.Messages
+import play.api.mvc.{Action, AnyContent, MessagesControllerComponents}
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest
+import uk.gov.hmrc.play.bootstrap.frontend.controller.FrontendBaseController
+import uk.gov.hmrc.sdecfileserviceapialpha.models.S3PostData
+import uk.gov.hmrc.sdecfileserviceapialpha.views.html.{FileUploadCompletePage, FileUploadPage}
 
 import java.nio.charset.StandardCharsets
-import java.time.{Instant, ZoneOffset}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneOffset}
 import java.util.Base64
-import java.util.UUID
 import java.util.concurrent.CompletionException
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest
-import play.api.mvc.{Action, AnyContent, MessagesControllerComponents}
-import uk.gov.hmrc.play.bootstrap.frontend.controller.FrontendBaseController
-import uk.gov.hmrc.sdecfileserviceapialpha.models.S3PostData
-import uk.gov.hmrc.sdecfileserviceapialpha.views.html.{FileUploadCompletePage, FileUploadPage}
 
 class FileUploader @Inject() (
   val controllerComponents: MessagesControllerComponents,
-  fileUploadPage: FileUploadPage,
-  fileUploadCompletePage: FileUploadCompletePage
+  fileUploadPage:           FileUploadPage,
+  fileUploadCompletePage:   FileUploadCompletePage
 )(implicit ec: ExecutionContext)
     extends FrontendBaseController {
 
@@ -91,7 +89,7 @@ class FileUploader @Inject() (
     Action.async { implicit request =>
       implicit val messages: Messages =
         controllerComponents.messagesApi.preferred(request)
-        
+
       val bucketName =
         request.getQueryString("bucket").getOrElse("")
 

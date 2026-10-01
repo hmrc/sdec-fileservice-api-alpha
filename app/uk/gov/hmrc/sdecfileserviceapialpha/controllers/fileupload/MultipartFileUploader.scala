@@ -85,9 +85,9 @@ object PartUploadUrl {
 }
 
 class MultipartFileUploader @Inject() (
-  mcc:                    MessagesControllerComponents,
-  multipartUploadService: MultipartUploadService,
-  multipartFileUploadPage: MultipartFileUploadPage,
+  mcc:                             MessagesControllerComponents,
+  multipartUploadService:          MultipartUploadService,
+  multipartFileUploadPage:         MultipartFileUploadPage,
   multipartFileUploadCompletePage: MultipartFileUploadCompletePage
 )(using ExecutionContext)
     extends FrontendController(mcc) {

@@ -18,9 +18,7 @@ package uk.gov.hmrc.sdecfileserviceapialpha.config
 
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.S3Configuration
-import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import java.net.URI
 import javax.inject.{Inject, Provider}

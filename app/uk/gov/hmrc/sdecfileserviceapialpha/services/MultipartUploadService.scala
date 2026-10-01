@@ -16,19 +16,17 @@
 
 package uk.gov.hmrc.sdecfileserviceapialpha.services
 
-import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{CompleteMultipartUploadRequest, CompletedMultipartUpload, CompletedPart, CreateMultipartUploadRequest}
+import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.UploadPartPresignRequest
-import software.amazon.awssdk.services.s3.model.UploadPartRequest
 import uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.{InitiateMultipartUploadResponse, MultipartUploadPart, PartUploadUrl}
 
 import javax.inject.Inject
 
 class MultipartUploadService @Inject() (
-  s3Client:    S3Client,
-  s3Presigner: S3Presigner,
+  s3Client:      S3Client,
+  s3Presigner:   S3Presigner,
   configuration: play.api.Configuration
 ) {
 

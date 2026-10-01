@@ -99,7 +99,6 @@
     </div>
 
 
-
     <script>
         (() => {
 
@@ -126,11 +125,202 @@
                     'input[name="csrfToken"]'
                 )?.value;
 
+            /*
+             * Number of S3 parts that will be uploaded
+             * concurrently.
+             */
+            const CONCURRENCY = 4;
+
+
+            /*
+             * Upload a single part.
+             */
+            const uploadPart =
+                async (file, part, partSize) => {
+
+                    const start =
+                        (part.partNumber - 1) * partSize;
+
+                    const end =
+                        Math.min(
+                            start + partSize,
+                            file.size
+                        );
+
+                    const chunk =
+                        file.slice(start, end);
+
+                    const response =
+                        await fetch(
+                            part.url,
+                            {
+                                method: "PUT",
+                                body: chunk
+                            }
+                        );
+                    console.log(
+                        new Date().toISOString(),
+                        "END part",
+                        part.partNumber
+                    );
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            "Part " +
+                            part.partNumber +
+                            " failed with HTTP " +
+                            response.status
+                        );
+                    }
+
+                    const etag =
+                        response.headers.get("ETag");
+
+                    if (!etag) {
+
+                        throw new Error(
+                            "S3 did not return an ETag for part " +
+                            part.partNumber
+                        );
+                    }
+
+                    return {
+                        partNumber:
+                            part.partNumber,
+
+                        etag:
+                            etag,
+
+                        size:
+                            chunk.size
+                    };
+                };
+
+
+            /*
+             * Upload all parts using a limited number
+             * of concurrent uploads.
+             */
+            const uploadPartsConcurrently =
+                async (file, upload) => {
+
+                    const parts =
+                        new Array(upload.urls.length);
+
+                    let nextPartIndex = 0;
+
+                    let bytesUploaded = 0;
+
+                    /*
+                     * Prevent simultaneous updates to the
+                     * progress display from becoming confusing.
+                     */
+                    const updateProgress =
+                        (bytes) => {
+
+                            bytesUploaded += bytes;
+
+                            const percentage =
+                                Math.round(
+                                    bytesUploaded /
+                                    file.size *
+                                    100
+                                );
+
+                            progress.value =
+                                percentage;
+
+                            progressText.textContent =
+                                percentage + "%";
+                        };
+
+
+                    /*
+                     * Each worker takes the next available
+                     * part and uploads it.
+                     */
+                    const worker =
+                        async () => {
+
+                            while (true) {
+
+                                const partIndex =
+                                    nextPartIndex++;
+
+                                if (
+                                    partIndex >=
+                                    upload.urls.length
+                                ) {
+                                    return;
+                                }
+
+                                const part =
+                                    upload.urls[partIndex];
+
+                                status.textContent =
+                                    "Uploading part " +
+                                    part.partNumber +
+                                    " of " +
+                                    upload.urls.length +
+                                    "...";
+
+                                const result =
+                                    await uploadPart(
+                                        file,
+                                        part,
+                                        upload.partSize
+                                    );
+
+                                parts[partIndex] = {
+                                    partNumber:
+                                        result.partNumber,
+
+                                    etag:
+                                        result.etag
+                                };
+
+                                updateProgress(
+                                    result.size
+                                );
+                            }
+                        };
+
+
+                    /*
+                     * Don't create more workers than there
+                     * are parts.
+                     */
+                    const workerCount =
+                        Math.min(
+                            CONCURRENCY,
+                            upload.urls.length
+                        );
+
+                    const workers =
+                        Array.from(
+                            {
+                                length:
+                                    workerCount
+                            },
+                            () => worker()
+                        );
+
+                    await Promise.all(workers);
+
+                    /*
+                     * Return the parts in part-number order.
+                     */
+                    return parts;
+                };
+
+
             uploadButton.addEventListener(
                 "click",
                 async () => {
 
-                    const file = fileInput.files[0];
+                    const file =
+                        fileInput.files[0];
 
                     if (!file) {
 
@@ -142,9 +332,11 @@
                         return;
                     }
 
-                    uploadButton.disabled = true;
+                    uploadButton.disabled =
+                        true;
 
-                    progressContainer.hidden = false;
+                    progressContainer.hidden =
+                        false;
 
                     status.textContent =
                         "Starting multipart upload...";
@@ -201,94 +393,23 @@
                         const upload =
                             await initiateResponse.json();
 
-                        status.textContent =
-                            "Uploading file parts...";
 
                         /*
                          * STEP 2
                          *
-                         * Upload each part directly
-                         * from the browser to S3.
+                         * Upload multiple parts concurrently
+                         * directly from the browser to S3.
                          */
 
-                        const parts = [];
+                        status.textContent =
+                            "Uploading file parts...";
 
-                        let bytesUploaded = 0;
+                        const parts =
+                            await uploadPartsConcurrently(
+                                file,
+                                upload
+                            );
 
-                        for (const part of upload.urls) {
-
-                            const start =
-                                (part.partNumber - 1) *
-                                upload.partSize;
-
-                            const end =
-                                Math.min(
-                                    start + upload.partSize,
-                                    file.size
-                                );
-
-                            const chunk =
-                                file.slice(start, end);
-
-                            const response =
-                                await fetch(
-                                    part.url,
-                                    {
-                                        method: "PUT",
-                                        body: chunk
-                                    }
-                                );
-
-                            if (!response.ok) {
-
-                                throw new Error(
-                                    "Part " +
-                                    part.partNumber +
-                                    " failed with HTTP " +
-                                    response.status
-                                );
-                            }
-
-                            const etag =
-                                response.headers.get("ETag");
-
-                            if (!etag) {
-
-                                throw new Error(
-                                    "S3 did not return an ETag for part " +
-                                    part.partNumber
-                                );
-                            }
-
-                            parts.push({
-                                partNumber:
-                                    part.partNumber,
-
-                                etag:
-                                    etag
-                            });
-
-                            bytesUploaded += chunk.size;
-
-                            const percentage =
-                                Math.round(
-                                    bytesUploaded /
-                                    file.size *
-                                    100
-                                );
-
-                            progress.value =
-                                percentage;
-
-                            progressText.textContent =
-                                percentage + "%";
-
-                            status.textContent =
-                                "Uploaded part " +
-                                part.partNumber +
-                                " of " +
-                                upload.urls.length;
-                        }
 
                         /*
                          * STEP 3
@@ -338,6 +459,7 @@
                             );
                         }
 
+
                         /*
                          * STEP 4
                          *
@@ -358,7 +480,8 @@
                             error.message +
                             '</p>';
 
-                        uploadButton.disabled = false;
+                        uploadButton.disabled =
+                            false;
                     }
                 }
             );
