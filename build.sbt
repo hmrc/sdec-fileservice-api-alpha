@@ -1,4 +1,5 @@
 import uk.gov.hmrc.DefaultBuildSettings
+import uk.gov.hmrc.versioning.SbtGitVersioning.autoImport.majorVersion
 
 val appName = "sdec-fileservice-api-alpha"
 
@@ -17,12 +18,22 @@ lazy val microservice = Project(appName, file("."))
   .settings(
     Compile / scalafmtOnCompile := true,
     Test / scalafmtOnCompile := true,
-    PlayKeys.playDefaultPort := 4503,
+    PlayKeys.playDefaultPort := 4510,
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
     Compile / unmanagedResourceDirectories += baseDirectory.value / "resources",
+    TwirlKeys.templateImports ++= Seq(
+      "play.twirl.api.HtmlFormat",
+      "play.twirl.api.HtmlFormat._",
+      "uk.gov.hmrc.govukfrontend.views.html.components._",
+      "uk.gov.hmrc.hmrcfrontend.views.html.components._",
+      "uk.gov.hmrc.hmrcfrontend.views.html.helpers._",
+      "uk.gov.hmrc.hmrcfrontend.views.config._"
+    ),
     compilerSettings
   )
   .settings(
+    pipelineStages := Seq(digest),
+    Assets / pipelineStages := Seq(concat),
     Compile / unmanagedResourceDirectories += baseDirectory.value / "resources",
     Test / unmanagedSourceDirectories := (Test / baseDirectory)(base => Seq(base / "test", base / "test-common")).value,
     Test / unmanagedResourceDirectories := Seq(

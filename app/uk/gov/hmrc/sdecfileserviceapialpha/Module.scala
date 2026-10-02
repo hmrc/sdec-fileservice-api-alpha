@@ -18,6 +18,9 @@ package uk.gov.hmrc.sdecfileserviceapialpha
 
 import play.api.inject.{Binding, Module as AppModule}
 import play.api.{Configuration, Environment}
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import uk.gov.hmrc.sdecfileserviceapialpha.config.{S3ClientProvider, S3PresignerProvider}
 
 import java.time.Clock
 
@@ -27,7 +30,10 @@ class Module extends AppModule:
     environment:   Environment,
     configuration: Configuration
   ): Seq[Binding[_]] =
-    bind[Clock].toInstance(
-      Clock.systemDefaultZone
-    ) :: // inject if current time needs to be controlled in unit tests
-      Nil
+    Seq(
+      bind[Clock].toInstance(Clock.systemDefaultZone),
+      bind[S3Client]
+        .toProvider[S3ClientProvider],
+      bind[S3Presigner]
+        .toProvider[S3PresignerProvider]
+    )
