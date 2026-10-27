@@ -17,13 +17,22 @@
 package uk.gov.hmrc.sdecfileserviceapialpha.config
 
 import play.api.Configuration
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class AppConfig @Inject() (config: Configuration):
+class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig) {
 
   val appName: String = config.get[String]("appName")
 
   val timeout:   Int = config.get[Int]("timeout-dialog.timeout")
   val countdown: Int = config.get[Int]("timeout-dialog.countdown")
+
+  // Boomi
+  val boomiBaseUrl:      String = servicesConfig.baseUrl("boomi")
+  val boomiClientId:     String = config.get[String]("boomi.client-id")
+  val boomiClientSecret: String = config.get[String]("boomi.client-secret")
+  val boomiSourceSystem: String = config.get[String]("boomi.source-system")
+
+}

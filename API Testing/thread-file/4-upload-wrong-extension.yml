@@ -1,0 +1,38 @@
+info:
+  name: Upload Wrong Extension
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{BASE_URL}}/thread/{{THREAD_REFERENCE}}/file"
+  body:
+    type: multipart-form
+    data:
+      - name: file
+        type: file
+        value:
+          - files/test.docx
+        contentType: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "400"
+    - expression: res.headers['content-type']
+      operator: contains
+      value: application/json
+    - expression: res.body.errorCode
+      operator: eq
+      value: INVALID_EXTENSION
+    - expression: res.body.message
+      operator: eq
+      value: "File extension not allowed. Allowed: .csv, .xml, .pdf, .zip, .txt"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

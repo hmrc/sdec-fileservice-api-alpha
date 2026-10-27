@@ -38,3 +38,5 @@ test-result
 tmp
 .vscode/
 seaweedfs-data/
+*.pdf
+*.docx

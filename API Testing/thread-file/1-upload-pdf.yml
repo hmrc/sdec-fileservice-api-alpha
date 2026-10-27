@@ -1,0 +1,52 @@
+info:
+  name: Upload PDF
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{BASE_URL}}/thread/{{THREAD_REFERENCE}}/file"
+  body:
+    type: multipart-form
+    data:
+      - name: file
+        type: file
+        value:
+          - files/test-256k.pdf
+        contentType: application/pdf
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          bru.setVar("mft-file-id", res.body.fileId);
+          bru.setVar("mft-path", res.body.path);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+    - expression: res.headers['content-type']
+      operator: contains
+      value: application/json
+    - expression: res.body.fileId
+      operator: isDefined
+    - expression: res.body.fileName
+      operator: startsWith
+      value: SDEC_
+    - expression: res.body.fileName
+      operator: endsWith
+      value: test-256k.pdf
+    - expression: res.body.sizeBytes
+      operator: isNumber
+    - expression: res.body.status
+      operator: eq
+      value: DELIVERED_TO_MFT
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

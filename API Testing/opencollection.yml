@@ -1,0 +1,10 @@
+info:
+  name: SDEC FileService API Testing
+  version: "1.0.0"
+  description: |-
+    Collection for sdec-fileservice-api-alpha.
+
+    Everything here talks to the service on localhost:4510, never to Boomi directly.
+    The service holds the Boomi credentials, so this collection needs none.
+    Run the service with:
+      sbt "run -Dboomi.client-id=YOUR_ID -Dboomi.client-secret=YOUR_SECRET"

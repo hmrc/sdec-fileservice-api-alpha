@@ -1,0 +1,8 @@
+info:
+  name: Thread File
+  seq: 2
+  description: |-
+    POST /thread/:threadReference/file
+
+    Takes a browser multipart form upload, fetches a Boomi token, and posts the
+    raw bytes to Boomi, which delivers them to MFT under /staging/<threadReference>/.
