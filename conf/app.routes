@@ -11,4 +11,5 @@ POST        /multipart-upload/initiate           uk.gov.hmrc.sdecfileserviceapia
 POST        /multipart-upload/complete           uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.MultipartFileUploader.completeMultipartUpload
 GET         /multipart-upload/complete           uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.MultipartFileUploader.uploadComplete
 
+# MFT
 POST        /thread/:threadReference/file        uk.gov.hmrc.sdecfileserviceapialpha.controllers.MftUploadController.upload(threadReference: String)

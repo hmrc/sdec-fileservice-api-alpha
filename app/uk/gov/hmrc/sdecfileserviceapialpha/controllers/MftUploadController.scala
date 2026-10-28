@@ -16,10 +16,11 @@
 
 package uk.gov.hmrc.sdecfileserviceapialpha.controllers
 
-import play.api.Logger
+import play.api.{Logger, Logging}
 import play.api.libs.Files.TemporaryFile
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.{Action, ControllerComponents, MultipartFormData, Result}
+import play.twirl.api.Html
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.sdecfileserviceapialpha.connectors.MftUploadConnector
@@ -34,7 +35,8 @@ class MftUploadController @Inject() (
   cc:        ControllerComponents,
   connector: MftUploadConnector
 )(implicit ec: ExecutionContext)
-    extends BackendController(cc) {
+    extends BackendController(cc)
+    with Logging {
 
   private val log = Logger(getClass)
 
@@ -57,7 +59,22 @@ class MftUploadController @Inject() (
 
   private def toResult(result: Either[MftUploadError, MftUploadSuccess]): Result =
     result match {
-      case Right(success)                                  => Created(Json.toJson(success))
+      case Right(success) =>
+        logger.info("File uploaded to Boomi successfully")
+        Created(
+          Html(
+            s"""
+             |<h1>File Uploaded Successfully</h1>
+             |<dl>
+             |  <dt><b>File ID:</b> ${success.fileId}</dt>
+             |  <dt><b>File Name:</b> ${success.fileName}</dt>
+             |  <dt><b>Path:</b> ${success.path}</dt>
+             |  <dt><b>Size:</b> ${success.sizeBytes} bytes</dt>
+             |  <dt><b>Status:</b> ${success.status}</dt>
+             |</dl>
+             |""".stripMargin
+          )
+        )
       case Left(MftUploadError.Rejected(code, message))    => BadRequest(errorJson(code, message))
       case Left(MftUploadError.DeliveryFailed(_, message)) => BadGateway(errorJson("MFT_DELIVERY_FAILED", message))
       case Left(MftUploadError.TokenFailed(status))        =>
