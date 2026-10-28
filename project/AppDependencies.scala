@@ -4,7 +4,7 @@ import sbt.*
 object AppDependencies {
 
   private val bootstrapVersion = "10.8.0"
-  private val hmrcPlayFrontend = "13.1.0"
+  private val hmrcPlayFrontend = "13.16.0"
   private val awsSDKVersion    = "2.55.6"
 
   val compile = Seq(
