@@ -16,12 +16,13 @@
 
 package uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload
 
+import play.api.Logging
 import play.api.i18n.Messages
 import play.api.mvc.{Action, AnyContent, MessagesControllerComponents}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest
+import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest}
 import uk.gov.hmrc.play.bootstrap.frontend.controller.FrontendBaseController
 import uk.gov.hmrc.sdecfileserviceapialpha.models.S3PostData
 import uk.gov.hmrc.sdecfileserviceapialpha.views.html.{FileUploadCompletePage, FileUploadPage}
@@ -41,7 +42,8 @@ class FileUploader @Inject() (
   fileUploadPage:           FileUploadPage,
   fileUploadCompletePage:   FileUploadCompletePage
 )(implicit ec: ExecutionContext)
-    extends FrontendBaseController {
+    extends FrontendBaseController
+    with Logging {
 
   private val s3Endpoint = "http://localhost:8333"
   private val bucket     = "sdec-files"
@@ -142,6 +144,29 @@ class FileUploader @Inject() (
         }
       }
     }
+
+  def delete(): Action[AnyContent] = Action { implicit request =>
+    logger.info(s"Deleting uploaded file on S3")
+    val key = request.body.asFormUrlEncoded.flatMap(_.get("key").flatMap(_.headOption))
+    key match {
+      case Some(value) =>
+        try {
+          val deleteRequest = DeleteObjectRequest
+            .builder()
+            .bucket(bucket)
+            .key(value)
+            .build()
+          s3Client.deleteObject(deleteRequest)
+          logger.info(s"Successfully delete S3 object: $value")
+          Redirect("/sdec-fileservice-api/file-upload")
+        } catch {
+          case exception: Exception =>
+            logger.warn(s"Exception at deleting object: $value, exception: ${exception.getMessage}")
+            BadRequest("Missing S3 object key")
+        }
+      case None => BadRequest("Missing S3 object key")
+    }
+  }
 
   private def createPostData(): S3PostData = {
 

@@ -97,11 +97,24 @@
 
     </dl>
 
-    <p class="govuk-body">
+    <div class="govuk-button-group">
         <a
-        class="govuk-link"
+        class="govuk-button"
         href="/sdec-fileservice-api/file-upload">
             Upload another file
         </a>
-    </p>
+        @helper.form(action = play.api.mvc.Call("POST", "/sdec-fileservice-api/file-delete")) {
+            <input
+            type="hidden"
+            name="key"
+            value="@key"
+            />
+            <button
+            type="submit"
+            class="govuk-button govuk-button--warning"
+            data-module="govuk-button">
+                Delete file
+            </button>
+        }
+    </div>
 }
