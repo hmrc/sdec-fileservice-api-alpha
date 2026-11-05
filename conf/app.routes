@@ -10,3 +10,6 @@ GET     /multipart-upload           uk.gov.hmrc.sdecfileserviceapialpha.controll
 POST    /multipart-upload/initiate  uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.MultipartFileUploader.initiateMultipartUpload
 POST    /multipart-upload/complete  uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.MultipartFileUploader.completeMultipartUpload
 GET     /multipart-upload/complete  uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.MultipartFileUploader.uploadComplete
+
+GET  /stub-file-upload              uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.StubFileUploader.onPageLoad
+GET  /stub-file-upload-complete     uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload.StubFileUploader.uploadComplete

@@ -1,0 +1,196 @@
+/*
+ * Copyright 2026 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload
+
+import play.api.Logging
+import play.api.i18n.Messages
+import play.api.mvc.{Action, AnyContent, MessagesControllerComponents, MessagesRequest}
+import uk.gov.hmrc.play.bootstrap.frontend.controller.FrontendBaseController
+import uk.gov.hmrc.sdecfileserviceapialpha.models.S3PostData
+import uk.gov.hmrc.sdecfileserviceapialpha.views.html.*
+
+import java.nio.charset.StandardCharsets
+import java.time.Instant
+import java.util.Base64
+import java.util.concurrent.CompletionException
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
+
+class StubFileUploader @Inject() (
+  val controllerComponents: MessagesControllerComponents,
+  fileUploadPage:           StubFileUploadPage,
+  fileUploadCompletePage:   StubFileUploadCompletePage
+)(implicit ec: ExecutionContext)
+    extends FrontendBaseController
+    with Logging {
+
+  private val s3Endpoint = "http://localhost:4999/sdec-ipaas-stub/file-upload"
+  private val bucket     = "sdec-files"
+  private val region     = "us-east-1"
+
+  private val accessKey = "admin"
+  private val secretKey = "secret"
+
+  def onPageLoad: Action[AnyContent] =
+    Action { request =>
+      given MessagesRequest[AnyContent] = request
+      given messages: Messages =
+        controllerComponents.messagesApi.preferred(request)
+      Ok(fileUploadPage(createPostData()))
+    }
+
+  def uploadComplete: Action[AnyContent] =
+    Action.async { implicit request =>
+      given MessagesRequest[AnyContent] = request
+      given messages: Messages =
+        controllerComponents.messagesApi.preferred(request)
+
+      val bucketName =
+        request.getQueryString("bucket").getOrElse("")
+
+      val key =
+        request.getQueryString("key").getOrElse("")
+
+      val etag =
+        request.getQueryString("etag").getOrElse("")
+
+      val fileName    = request.getQueryString("fileName").getOrElse("")
+      val fileSize    = request.getQueryString("fileSize").getOrElse("")
+      val contentType = request.getQueryString("contentType").getOrElse("")
+
+      if bucketName != bucket || key.isEmpty then {
+        Future.successful(
+          BadRequest("Invalid upload details")
+        )
+      } else {
+        Future {
+          Ok(
+            fileUploadCompletePage(
+              fileName = fileName,
+              fileSize = fileSize.toLong,
+              contentType = contentType,
+              key = key,
+              etag = etag
+            )
+          )
+        }.recover {
+          case ce: CompletionException =>
+            InternalServerError(s"Unable to retrieve uploaded file details: ${ce.getMessage}")
+
+          case e: Exception =>
+            InternalServerError(s"Unable to retrieve uploaded file details: ${e.getMessage}")
+        }
+      }
+    }
+
+  private def createPostData(): S3PostData = {
+    import uk.gov.hmrc.sdecfileserviceapialpha.utils.DateTimeUtil.*
+    val now        = Instant.now()
+    val expiration = now.plusSeconds(15 * 60)
+
+    val date =
+      dateFormatter.format(now)
+
+    val expirationTimestamp =
+      policyExpirationFormatter.format(expiration)
+
+    val timestamp =
+      signingTimestampFormatter.format(now)
+
+    val credential =
+      s"$accessKey/$date/$region/s3/aws4_request"
+
+    val key =
+      "uploads/${filename}"
+
+    val redirect =
+      "http://localhost:4510/sdec-fileservice-api/stub-file-upload-complete"
+
+    val policy =
+      s"""
+         |{
+         |  "expiration": "$expirationTimestamp",
+         |  "conditions": [
+         |    ["eq", "$$bucket", "$bucket"],
+         |    ["starts-with", "$$key", "uploads/"],
+         |    ["eq", "$$x-amz-algorithm", "AWS4-HMAC-SHA256"],
+         |    ["eq", "$$x-amz-credential", "$credential"],
+         |    ["eq", "$$x-amz-date", "$timestamp"],
+         |    ["content-length-range", 1, 5000000000]
+         |  ]
+         |}
+         |""".stripMargin
+
+    val encodedPolicy =
+      Base64.getEncoder.encodeToString(
+        policy.getBytes(StandardCharsets.UTF_8)
+      )
+
+    val signingKey =
+      hmac(
+        hmac(
+          hmac(
+            hmac(
+              s"AWS4$secretKey".getBytes(StandardCharsets.UTF_8),
+              date
+            ),
+            region
+          ),
+          "s3"
+        ),
+        "aws4_request"
+      )
+
+    val signature =
+      hmac(signingKey, encodedPolicy)
+        .map("%02x".format(_))
+        .mkString
+
+    S3PostData(
+      url = s"$s3Endpoint/$bucket",
+      fields = Map(
+        "key"                     -> key,
+        "bucket"                  -> bucket,
+        "policy"                  -> encodedPolicy,
+        "x-amz-algorithm"         -> "AWS4-HMAC-SHA256",
+        "x-amz-credential"        -> credential,
+        "x-amz-date"              -> timestamp,
+        "x-amz-signature"         -> signature,
+        "success_action_redirect" -> redirect
+      )
+    )
+  }
+
+  private def hmac(
+    key:  Array[Byte],
+    data: String
+  ): Array[Byte] = {
+
+    val mac =
+      Mac.getInstance("HmacSHA256")
+
+    mac.init(
+      new SecretKeySpec(key, "HmacSHA256")
+    )
+
+    mac.doFinal(
+      data.getBytes(StandardCharsets.UTF_8)
+    )
+  }
+}
