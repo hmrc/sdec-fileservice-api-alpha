@@ -33,7 +33,7 @@ import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class StubFileUploader @Inject()(
+class StubFileUploader @Inject() (
   val controllerComponents: MessagesControllerComponents,
   fileUploadPage:           StubFileUploadPage,
   fileUploadCompletePage:   StubFileUploadCompletePage
