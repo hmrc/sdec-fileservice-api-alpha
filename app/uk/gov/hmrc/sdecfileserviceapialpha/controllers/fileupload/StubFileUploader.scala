@@ -18,14 +18,13 @@ package uk.gov.hmrc.sdecfileserviceapialpha.controllers.fileupload
 
 import play.api.Logging
 import play.api.i18n.Messages
-import play.api.mvc.{Action, AnyContent, MessagesControllerComponents}
+import play.api.mvc.{Action, AnyContent, MessagesControllerComponents, MessagesRequest}
 import uk.gov.hmrc.play.bootstrap.frontend.controller.FrontendBaseController
 import uk.gov.hmrc.sdecfileserviceapialpha.models.S3PostData
 import uk.gov.hmrc.sdecfileserviceapialpha.views.html.*
 
 import java.nio.charset.StandardCharsets
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, ZoneOffset}
+import java.time.Instant
 import java.util.Base64
 import java.util.concurrent.CompletionException
 import javax.crypto.Mac
@@ -48,31 +47,18 @@ class StubFileUploader @Inject() (
   private val accessKey = "admin"
   private val secretKey = "secret"
 
-  private val dateFormatter =
-    DateTimeFormatter
-      .ofPattern("yyyyMMdd")
-      .withZone(ZoneOffset.UTC)
-
-  private val policyExpirationFormatter =
-    DateTimeFormatter
-      .ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
-      .withZone(ZoneOffset.UTC)
-
-  private val signingTimestampFormatter =
-    DateTimeFormatter
-      .ofPattern("yyyyMMdd'T'HHmmss'Z'")
-      .withZone(ZoneOffset.UTC)
-
   def onPageLoad: Action[AnyContent] =
-    Action { implicit request =>
-      implicit val messages: Messages =
+    Action { request =>
+      given MessagesRequest[AnyContent] = request
+      given messages: Messages =
         controllerComponents.messagesApi.preferred(request)
       Ok(fileUploadPage(createPostData()))
     }
 
   def uploadComplete: Action[AnyContent] =
     Action.async { implicit request =>
-      implicit val messages: Messages =
+      given MessagesRequest[AnyContent] = request
+      given messages: Messages =
         controllerComponents.messagesApi.preferred(request)
 
       val bucketName =
@@ -114,6 +100,7 @@ class StubFileUploader @Inject() (
     }
 
   private def createPostData(): S3PostData = {
+    import uk.gov.hmrc.sdecfileserviceapialpha.utils.DateTimeUtil.*
     val now        = Instant.now()
     val expiration = now.plusSeconds(15 * 60)
 
@@ -129,17 +116,6 @@ class StubFileUploader @Inject() (
     val credential =
       s"$accessKey/$date/$region/s3/aws4_request"
 
-    /*
-     * The browser replaces ${filename} with the name of the
-     * file selected by the user.
-     *
-     * Example:
-     *
-     *   uploads/test.pdf
-     *
-     * The policy therefore uses starts-with rather than an
-     * exact key condition.
-     */
     val key =
       "uploads/${filename}"
 
